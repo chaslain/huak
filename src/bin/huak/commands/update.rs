@@ -1,9 +1,9 @@
+use super::utils::subcommand;
 use clap::{value_parser, Arg, ArgMatches, Command};
 use huak::errors::CliResult;
 
-use crate::utils::subcommand;
-
-pub fn arg() -> Command<'static> {
+/// Get the `update` subcommand.
+pub fn cmd() -> Command<'static> {
     subcommand("update")
         .arg(
             Arg::new("dependency")
@@ -13,6 +13,7 @@ pub fn arg() -> Command<'static> {
         .about("Update dependencies added to the project.")
 }
 
+/// Run the `update` command.
 pub fn run(args: &ArgMatches) -> CliResult {
     let _ = args.get_one::<String>("dependency").unwrap();
 

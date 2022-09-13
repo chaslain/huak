@@ -1,9 +1,15 @@
+use std::env;
+
+use super::utils::subcommand;
 use clap::{value_parser, Arg, ArgMatches, Command};
-use huak::errors::CliResult;
+use huak::ops;
+use huak::{
+    errors::{CliError, CliResult},
+    project::Project,
+};
 
-use crate::utils::subcommand;
-
-pub fn arg() -> Command<'static> {
+/// Get the `remove` subcommand.
+pub fn cmd() -> Command<'static> {
     subcommand("remove")
         .arg(
             Arg::new("dependency")
@@ -13,8 +19,21 @@ pub fn arg() -> Command<'static> {
         .about("Remove a dependency from the project.")
 }
 
+/// Run the `remove` command.
 pub fn run(args: &ArgMatches) -> CliResult {
-    let _args = args.get_one::<String>("dependency");
+    let dependency = match args.get_one::<String>("dependency") {
+        Some(d) => d,
+        None => {
+            return Err(CliError::new(
+                anyhow::format_err!("no dependency was provided"),
+                2,
+            ))
+        }
+    };
+    let cwd = env::current_dir()?;
+    let project = Project::from(cwd)?;
 
-    unimplemented!()
+    ops::remove::remove_project_dependency(&project, dependency)?;
+
+    Ok(())
 }

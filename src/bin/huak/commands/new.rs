@@ -1,43 +1,56 @@
-use std::{fs, path::Path};
+use std::env;
+use std::fs;
 
-use clap::Command;
+use super::utils::subcommand;
+use clap::{arg, value_parser, ArgMatches, Command};
 use huak::errors::{CliError, CliResult};
+use huak::ops;
+use huak::project::Project;
 
-use crate::pyproject;
-use crate::utils::subcommand;
-
-pub fn arg() -> Command<'static> {
-    subcommand("new").about("Create a project from scratch.")
+/// Get the `new` subcommand.
+pub fn cmd() -> Command<'static> {
+    subcommand("new")
+        .about("Create a project from scratch.")
+        .arg(arg!([PATH]).id("path").value_parser(value_parser!(String)))
 }
 
-pub fn run() -> CliResult {
-    let toml = pyproject::toml::create()?;
-    // Creates project directory. TODO: Allow current dir ".".
-    let path = Path::new(toml.tool().huak().name());
+/// Run the `new` command.
+// TODO: Ops should hanlde the path creation step in addition to the project creation.
+pub fn run(args: &ArgMatches) -> CliResult {
+    // This command runs from the current working directory
+    // Each command's behavior is triggered from the context of the cwd.
+    let cwd = env::current_dir()?;
 
-    fs::create_dir_all(path)?;
-    let string = match toml.to_string() {
-        Ok(s) => s,
-        Err(_) => {
-            return Err(CliError::new(
-                anyhow::format_err!("failed to serialize toml"),
-                2,
-            ))
-        }
+    // If a user passes a path
+    let path = match args.get_one::<String>("path") {
+        Some(p) => cwd.join(p),
+        _ => cwd.clone(),
     };
-    fs::write(path.join("pyproject.toml"), string)?;
 
-    // Create src subdirectory with standard project namespace.
-    fs::create_dir_all(path.join("src"))?;
-    fs::create_dir_all(path.join("src").join(toml.tool().huak().name()))?;
+    // Make sure there isn't already a path we would override.
+    if path.exists() && path != cwd {
+        return Err(CliError::new(
+            anyhow::format_err!("a directory already exists"),
+            2,
+        ));
+    }
 
-    // Add __init__.py to main project namespace.
-    fs::write(
-        path.join("src")
-            .join(toml.tool().huak().name())
-            .join("__init__.py"),
-        "",
-    )?;
+    // If the current directory is used it must be empty. User should use init.
+    if path == cwd && path.read_dir()?.count() > 0 {
+        return Err(CliError::new(
+            anyhow::format_err!("cwd was used but isn't empty"),
+            2,
+        ));
+    }
+
+    // Create project directory.
+    if path != cwd {
+        fs::create_dir_all(&path)?;
+    }
+
+    let project = Project::from(path)?;
+
+    ops::new::create_project(&project)?;
 
     Ok(())
 }

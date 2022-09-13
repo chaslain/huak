@@ -1,9 +1,9 @@
+use super::utils::subcommand;
 use clap::{value_parser, Arg, ArgMatches, Command};
 use huak::errors::CliResult;
 
-use crate::utils::subcommand;
-
-pub fn arg() -> Command<'static> {
+/// Get the `run` subcommand.
+pub fn cmd() -> Command<'static> {
     subcommand("run")
         .arg(
             Arg::new("command")
@@ -14,6 +14,7 @@ pub fn arg() -> Command<'static> {
         .about("Run a command within the project's environment context.")
 }
 
+/// Run the `run` command.
 pub fn run(args: &ArgMatches) -> CliResult {
     let _ = args.get_many::<String>("command");
 
